@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"regexp"
+	"strings"
 )
 
 type NewLine byte
@@ -47,11 +49,14 @@ func (t *Table) Read(r io.Reader) error {
 		}
 
 		// Handle line here
+		log.Printf("Seperator: %s", t.sep)
 		res := t.sep.Split(string(line), -1)
 		t.data = append(t.data, res)
 	}
 }
 
+// longestLine finds the line with the most number of columns, and figures out
+// how wide each column needs to be.
 func (t *Table) longestLine() int {
 	longest := 0
 
@@ -65,8 +70,9 @@ func (t *Table) longestLine() int {
 	t.columnChars = make([]int, t.rowCount)
 
 	for _, row := range t.data {
-		for i, column := range row {
-			l := len(column)
+		for i := range row {
+			row[i] = strings.TrimSpace(row[i])
+			l := len(row[i])
 			if l > t.columnChars[i] {
 				t.columnChars[i] = l
 			}
@@ -78,36 +84,38 @@ func (t *Table) longestLine() int {
 
 func (t *Table) Write(w io.Writer) (int, error) {
 	t.longestLine()
-
-	charsWritten := 0
+	sw := newSumWriter(w)
+	w = sw // alias to prevent any accidental mis-writes
 
 	for _, row := range t.data {
-		fmt.Fprintf(w, "| ")
+		fmt.Fprintf(w, "|")
 		for i := 0; i < t.rowCount; i++ {
 			column := ""
 			if i < len(row) {
 				column = row[i]
 			}
 
-			paddingLen := t.columnChars[i] - len(column)
-			padding := make([]byte, paddingLen)
-			for j := range padding {
-				padding[j] = ' '
-			}
-
-			count, err := fmt.Fprintf(w, " %s%s |", padding, column)
-			charsWritten += count
+			padding := genPadding(t.columnChars[i], len(column))
+			_, err := fmt.Fprintf(sw, " %s%s |", column, padding)
 			if err != nil {
-				return charsWritten, err
+				return sw.Sum, err
 			}
 		}
 
-		count, err := fmt.Fprintf(w, string(t.newLine))
-		charsWritten += count
+		_, err := fmt.Fprintf(sw, string(t.newLine))
 		if err != nil {
-			return charsWritten, err
+			return sw.Sum, err
 		}
 	}
 
-	return charsWritten, nil
+	return sw.Sum, nil
+}
+
+func genPadding(spaceSize, content int) string {
+	padding := make([]byte, spaceSize-content)
+	for j := range padding {
+		padding[j] = ' '
+	}
+
+	return string(padding)
 }

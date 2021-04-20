@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"regexp"
+
+	"github.com/keyneston/mktable/table"
 )
 
 type Config struct {
@@ -16,9 +18,8 @@ type Config struct {
 
 func (c *Config) Register(f *flag.FlagSet) *Config {
 	c.fset = f
-
-	flag.BoolVar(&c.SkipHeaders, "no-header", false, "Skip Setting Headers")
-	flag.StringVar(&c.Seperator, "s", `[\t]+`, "Regexp of Delimiter to Build Table on")
+	c.fset.BoolVar(&c.SkipHeaders, "no-header", false, "Skip Setting Headers")
+	c.fset.StringVar(&c.Seperator, "s", `[ \t]*\t[ \t]*`, "Regexp of Delimiter to Build Table on")
 
 	return c
 }
@@ -34,7 +35,11 @@ func (c *Config) CompileSeperator() (*regexp.Regexp, error) {
 func main() {
 	fset := flag.NewFlagSet("", flag.ExitOnError)
 	c := (&Config{}).Register(fset)
-	if err := c.Parse(os.Args); err != nil {
+	if err := c.Parse(os.Args[1:]); err != nil {
 		log.Fatalf("Error: %v", err)
 	}
+
+	tb := table.NewTable(regexp.MustCompile(c.Seperator))
+	tb.Read(os.Stdin)
+	tb.Write(os.Stdout)
 }
