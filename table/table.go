@@ -21,15 +21,22 @@ type Table struct {
 	sep     *regexp.Regexp
 	newLine NewLine
 
+	maxPadding int
+
 	rowCount    int
 	columnChars []int
 }
 
 func NewTable(sep *regexp.Regexp) *Table {
 	return &Table{
-		sep:     sep,
-		newLine: NewLineUnix,
+		sep:        sep,
+		newLine:    NewLineUnix,
+		maxPadding: -1,
 	}
+}
+
+func (t *Table) SetMaxPadding(i int) {
+	t.maxPadding = i
 }
 
 func (t *Table) Read(r io.Reader) error {
@@ -95,7 +102,7 @@ func (t *Table) Write(w io.Writer) (int, error) {
 				column = row[i]
 			}
 
-			padding := genPadding(t.columnChars[i], len(column))
+			padding := t.genPadding(t.columnChars[i], len(column))
 			_, err := fmt.Fprintf(sw, " %s%s |", column, padding)
 			if err != nil {
 				return sw.Sum, err
@@ -111,11 +118,11 @@ func (t *Table) Write(w io.Writer) (int, error) {
 	return sw.Sum, nil
 }
 
-func genPadding(spaceSize, content int) string {
-	padding := make([]byte, spaceSize-content)
-	for j := range padding {
-		padding[j] = ' '
+func (t *Table) genPadding(spaceSize, content int) string {
+	padding := spaceSize - content
+	if t.maxPadding > 0 && padding > t.maxPadding {
+		padding = t.maxPadding
 	}
 
-	return string(padding)
+	return strings.Repeat(" ", padding)
 }
