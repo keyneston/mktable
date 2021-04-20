@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 	"strings"
 )
@@ -13,7 +12,8 @@ import (
 type NewLine byte
 
 const (
-	NewLineUnix NewLine = '\n'
+	NewLineUnix    NewLine = '\n'
+	minHeaderWidth         = 3
 )
 
 type Table struct {
@@ -21,7 +21,8 @@ type Table struct {
 	sep     *regexp.Regexp
 	newLine NewLine
 
-	maxPadding int
+	MaxPadding  int
+	SkipHeaders bool
 
 	rowCount    int
 	columnChars []int
@@ -31,12 +32,8 @@ func NewTable(sep *regexp.Regexp) *Table {
 	return &Table{
 		sep:        sep,
 		newLine:    NewLineUnix,
-		maxPadding: -1,
+		MaxPadding: -1,
 	}
-}
-
-func (t *Table) SetMaxPadding(i int) {
-	t.maxPadding = i
 }
 
 func (t *Table) Read(r io.Reader) error {
@@ -56,7 +53,6 @@ func (t *Table) Read(r io.Reader) error {
 		}
 
 		// Handle line here
-		log.Printf("Seperator: %s", t.sep)
 		res := t.sep.Split(string(line), -1)
 		t.data = append(t.data, res)
 	}
@@ -93,24 +89,16 @@ func (t *Table) Write(w io.Writer) (int, error) {
 	t.longestLine()
 	sw := newSumWriter(w)
 	w = sw // alias to prevent any accidental mis-writes
+	startingRow := 0
 
-	for _, row := range t.data {
-		fmt.Fprintf(w, "|")
-		for i := 0; i < t.rowCount; i++ {
-			column := ""
-			if i < len(row) {
-				column = row[i]
-			}
+	if !t.SkipHeaders && len(t.data) >= 1 {
+		startingRow += 1
+		t.writeRow(sw, t.data[0])
+		t.writeRow(sw, t.genHeaderBreaks())
+	}
 
-			padding := t.genPadding(t.columnChars[i], len(column))
-			_, err := fmt.Fprintf(sw, " %s%s |", column, padding)
-			if err != nil {
-				return sw.Sum, err
-			}
-		}
-
-		_, err := fmt.Fprintf(sw, string(t.newLine))
-		if err != nil {
+	for i := startingRow; i < len(t.data); i++ {
+		if err := t.writeRow(sw, t.data[i]); err != nil {
 			return sw.Sum, err
 		}
 	}
@@ -118,11 +106,51 @@ func (t *Table) Write(w io.Writer) (int, error) {
 	return sw.Sum, nil
 }
 
+func (t *Table) writeRow(w io.Writer, row []string) error {
+	fmt.Fprintf(w, "|")
+	for i := 0; i < t.rowCount; i++ {
+		column := ""
+		if i < len(row) {
+			column = row[i]
+		}
+
+		padding := t.genPadding(t.getColumnWidth(i), len(column))
+		_, err := fmt.Fprintf(w, " %s%s |", column, padding)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := fmt.Fprintf(w, string(t.newLine))
+	return err
+}
+
 func (t *Table) genPadding(spaceSize, content int) string {
 	padding := spaceSize - content
-	if t.maxPadding > 0 && padding > t.maxPadding {
-		padding = t.maxPadding
+	if t.MaxPadding > 0 && padding > t.MaxPadding {
+		padding = t.MaxPadding
 	}
 
 	return strings.Repeat(" ", padding)
+}
+
+func (t *Table) getColumnWidth(i int) int {
+	if i > len(t.columnChars) {
+		return 0
+	}
+	width := t.columnChars[i]
+	if !t.SkipHeaders && width < minHeaderWidth {
+		return minHeaderWidth
+	}
+
+	return width
+}
+
+func (t *Table) genHeaderBreaks() []string {
+	breaks := []string{}
+	for i := 0; i < t.rowCount; i++ {
+		breaks = append(breaks, strings.Repeat("-", t.getColumnWidth(i)))
+	}
+
+	return breaks
 }

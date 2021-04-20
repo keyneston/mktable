@@ -42,7 +42,8 @@ func main() {
 	}
 
 	tb := table.NewTable(regexp.MustCompile(c.Seperator))
-	tb.SetMaxPadding(c.MaxPadding)
+	tb.MaxPadding = c.MaxPadding
+	tb.SkipHeaders = c.SkipHeaders
 	tb.Read(os.Stdin)
 	tb.Write(os.Stdout)
 }
