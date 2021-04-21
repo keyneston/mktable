@@ -52,8 +52,12 @@ func (t *Table) Read(r io.Reader) error {
 			continue
 		}
 
-		// Handle line here
 		res := t.sep.Split(string(line), -1)
+		for i := range res {
+			res[i] = prepareContent(res[i])
+		}
+
+		// Handle line here
 		t.data = append(t.data, res)
 	}
 }
@@ -74,7 +78,6 @@ func (t *Table) longestLine() int {
 
 	for _, row := range t.data {
 		for i := range row {
-			row[i] = strings.TrimSpace(row[i])
 			l := len(row[i])
 			if l > t.columnChars[i] {
 				t.columnChars[i] = l
