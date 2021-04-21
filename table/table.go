@@ -98,6 +98,11 @@ func (t *Table) Write(w io.Writer) (int, error) {
 		startingRow += 1
 		t.writeRow(sw, t.data[0])
 		t.writeRow(sw, t.genHeaderBreaks())
+	} else {
+		// We need to write an empty header that way some markdown engines
+		// still recognise it as a table.
+		t.writeRow(sw, []string{})
+		t.writeRow(sw, t.genHeaderBreaks())
 	}
 
 	for i := startingRow; i < len(t.data); i++ {
