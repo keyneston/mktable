@@ -3,7 +3,6 @@ package table
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -11,7 +10,7 @@ import (
 	"github.com/go-test/deep"
 )
 
-func TestTableRead(t *testing.T) {
+func TestTable(t *testing.T) {
 	type testCase struct {
 		name     string
 		input    string
@@ -31,7 +30,40 @@ func TestTableRead(t *testing.T) {
 		tb.Read(bytes.NewBufferString(c.input))
 
 		if diff := deep.Equal(c.expected, tb.data); diff != nil {
-			t.Errorf("Day.Parse(%q) =\n%v", c.name, strings.Join(diff, "\n"))
+			t.Errorf("Table.Read(%q) =\n%v", c.name, strings.Join(diff, "\n"))
+		}
+	}
+}
+
+func TestReadReformat(t *testing.T) {
+	type testCase struct {
+		name     string
+		input    string
+		expected [][]string
+	}
+
+	cases := []testCase{
+		{
+			name: "basic", input: "| a | b | c |\n",
+			expected: [][]string{{"a", "b", "c"}},
+		},
+		{
+			name: "header", input: "| --- | --- | --- |\n",
+			expected: nil,
+		},
+		{
+			name: "trailing pipe", input: "| a | b | \\| |\n",
+			expected: [][]string{{"a", "b", `\|`}},
+		},
+	}
+
+	for _, c := range cases {
+		tb := NewTable(regexp.MustCompile(`\t`))
+		tb.Reformat = true
+		tb.Read(bytes.NewBufferString(c.input))
+
+		if diff := deep.Equal(c.expected, tb.data); diff != nil {
+			t.Errorf("Table.Read(%q) =\n%v", c.name, strings.Join(diff, "\n"))
 		}
 	}
 }
@@ -75,14 +107,14 @@ func TestPrint(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		buf := &bytes.Buffer{}
 		tb := NewTable(regexp.MustCompile(c.sep))
 		tb.Read(bytes.NewBufferString(c.input))
-		tb.Write(os.Stdout)
-		fmt.Fprintln(os.Stdout, "")
+		tb.Write(buf)
+		fmt.Fprintln(buf, "")
 
-		t.Errorf("testing")
-		//if c.expected != tb.longestLine() {
-		//	t.Errorf("tb[%q].longestLine() = %d; want %d", c.name, tb.longestLine(), c.expected)
-		//}
+		if c.expected != tb.longestLine() {
+			t.Errorf("tb[%q].longestLine() = %d; want %d", c.name, tb.longestLine(), c.expected)
+		}
 	}
 }

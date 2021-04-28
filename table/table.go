@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -14,6 +15,11 @@ type NewLine byte
 const (
 	NewLineUnix    NewLine = '\n'
 	minHeaderWidth         = 3
+)
+
+var (
+	headerLine  = regexp.MustCompile(`^[| -]+\n$`)
+	reformatSep = regexp.MustCompile(`(?:[^\\])([\t ]*\|[\t ]*)`)
 )
 
 type Table struct {
@@ -37,42 +43,58 @@ func NewTable(sep *regexp.Regexp) *Table {
 	}
 }
 
-func (t *Table) reformatPreprocessor(r io.Reader) io.Reader {
-	newR, w := io.Pipe()
-	// TODO: Make this not a hack!
-	var sequence = "REFORMAT_SEQUENCE"
-	headerLineRE := regexp.MustCompile(`^[| -]+\n$`)
-	t.sep = regexp.MustCompile(sequence)
+func (t *Table) readReformat(r io.Reader) error {
+	scanner := bufio.NewScanner(r)
 
-	go func() {
-		defer w.Close()
+	currentLine := []string{}
+	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		log.Printf("SplitFunc(%q, %v)", string(data), atEOF)
 
-		reader := bufio.NewReader(r)
-		for {
-			line, err := reader.ReadSlice(byte(t.newLine))
-			if err != nil {
-				return
+		for i := range data {
+			switch data[i] {
+			case '\n':
+				token := bytes.TrimSpace(data[0:i])
+				if len(token) > 0 {
+					currentLine = append(currentLine, string(token))
+				}
+
+				// Save and reset currentLine
+				t.data = append(t.data, currentLine)
+				log.Printf("t.data = %v", t.data)
+				currentLine = nil
+				return i - 1, token, nil
+			case '|':
+				if i > 0 && data[i-1] == '\\' {
+					continue
+				}
+				if i == 0 {
+					return 1, nil, nil
+				}
+
+				token := bytes.TrimSpace(data[0 : i-1])
+				log.Printf("Adding %q to currentLine", string(token))
+				currentLine = append(currentLine, string(token))
+				return i + 1, token, nil
 			}
-			if line == nil {
-				return
-			}
-			if headerLineRE.Match(line) {
-				continue
-			}
-
-			line = bytes.Trim(line, "| \t\n") // TODO: make this not trim trailing escaped '|'
-			line = bytes.Replace(line, []byte("|"), []byte(sequence), -1)
-
-			fmt.Fprintln(w, string(line))
 		}
-	}()
 
-	return newR
+		if atEOF {
+			return 0, nil, nil
+		}
+		// Ask for more data:
+		return 0, nil, nil
+	})
+
+	// The actual logic is in the split function, we aren't using the tokens returned here.
+	for scanner.Scan() {
+	}
+
+	return nil
 }
 
 func (t *Table) Read(r io.Reader) error {
 	if t.Reformat {
-		r = t.reformatPreprocessor(r)
+		return t.readReformat(r)
 	}
 
 	reader := bufio.NewReader(r)
