@@ -41,6 +41,7 @@ func (t *Table) reformatPreprocessor(r io.Reader) io.Reader {
 	newR, w := io.Pipe()
 	// TODO: Make this not a hack!
 	var sequence = "REFORMAT_SEQUENCE"
+	headerLineRE := regexp.MustCompile(`^[| -]+\n$`)
 	t.sep = regexp.MustCompile(sequence)
 
 	go func() {
@@ -54,6 +55,9 @@ func (t *Table) reformatPreprocessor(r io.Reader) io.Reader {
 			}
 			if line == nil {
 				return
+			}
+			if headerLineRE.Match(line) {
+				continue
 			}
 
 			line = bytes.Trim(line, "| \t\n") // TODO: make this not trim trailing escaped '|'
