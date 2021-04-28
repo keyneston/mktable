@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 	"strings"
 )
@@ -59,8 +58,6 @@ func (t *Table) reformatPreprocessor(r io.Reader) io.Reader {
 
 			line = bytes.Trim(line, "| \t\n") // TODO: make this not trim trailing escaped '|'
 			line = bytes.Replace(line, []byte("|"), []byte(sequence), -1)
-
-			log.Printf("About to write %q", line)
 
 			fmt.Fprintln(w, string(line))
 		}
