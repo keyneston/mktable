@@ -16,6 +16,11 @@ const (
 	minHeaderWidth         = 3
 )
 
+var (
+	headerLine  = regexp.MustCompile(`^[| -]+\n$`)
+	reformatSep = regexp.MustCompile(`(?:[^\\])([\t ]*\|[\t ]*)`)
+)
+
 type Table struct {
 	data    [][]string
 	sep     *regexp.Regexp
@@ -23,6 +28,7 @@ type Table struct {
 
 	MaxPadding  int
 	SkipHeaders bool
+	Reformat    bool
 
 	rowCount    int
 	columnChars []int
@@ -36,7 +42,70 @@ func NewTable(sep *regexp.Regexp) *Table {
 	}
 }
 
+func (t *Table) readReformat(r io.Reader) error {
+	scanner := bufio.NewScanner(r)
+	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		for i := range data {
+			switch data[i] {
+			case '\n':
+				token := bytes.TrimSpace(data[0:i])
+				if len(token) > 0 {
+					return i - 1, token, nil
+				}
+
+				return 1, []byte{'\n'}, nil
+			case '|':
+				if i > 0 && data[i-1] == '\\' {
+					continue
+				}
+				if i == 0 {
+					return 1, nil, nil
+				}
+
+				token := bytes.TrimSpace(data[0 : i-1])
+				return i + 1, token, nil
+			}
+		}
+
+		if atEOF {
+			return 0, nil, nil
+		}
+		// Ask for more data:
+		return 0, nil, nil
+	})
+
+	// The actual logic is in the split function, we aren't using the tokens returned here.
+	current := []string{}
+	isHeader := false
+
+	for scanner.Scan() {
+		token := scanner.Text()
+
+		if token == "\n" {
+			if !isHeader {
+				t.data = append(t.data, current)
+			}
+			current = nil
+			continue
+		}
+
+		// TODO: Preserve alignment (`:--`, `--:`, `:--:`) through reformats
+
+		// Check if it is likely part of a header row, by removing all header
+		// row chars and seeing if we have nothing left
+		isHeader = (len(strings.Trim(token, ":-")) == 0)
+
+		current = append(current, token)
+	}
+
+	return nil
+}
+
 func (t *Table) Read(r io.Reader) error {
+	if t.Reformat {
+		return t.readReformat(r)
+	}
+
 	reader := bufio.NewReader(r)
 	for {
 		line, err := reader.ReadSlice(byte(t.newLine))
