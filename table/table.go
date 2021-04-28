@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -23,6 +24,7 @@ type Table struct {
 
 	MaxPadding  int
 	SkipHeaders bool
+	Reformat    bool
 
 	rowCount    int
 	columnChars []int
@@ -36,7 +38,42 @@ func NewTable(sep *regexp.Regexp) *Table {
 	}
 }
 
+func (t *Table) reformatPreprocessor(r io.Reader) io.Reader {
+	newR, w := io.Pipe()
+	// TODO: Make this not a hack!
+	var sequence = "REFORMAT_SEQUENCE"
+	t.sep = regexp.MustCompile(sequence)
+
+	go func() {
+		defer w.Close()
+
+		reader := bufio.NewReader(r)
+		for {
+			line, err := reader.ReadSlice(byte(t.newLine))
+			if err != nil {
+				return
+			}
+			if line == nil {
+				return
+			}
+
+			line = bytes.Trim(line, "| \t\n") // TODO: make this not trim trailing escaped '|'
+			line = bytes.Replace(line, []byte("|"), []byte(sequence), -1)
+
+			log.Printf("About to write %q", line)
+
+			fmt.Fprintln(w, string(line))
+		}
+	}()
+
+	return newR
+}
+
 func (t *Table) Read(r io.Reader) error {
+	if t.Reformat {
+		r = t.reformatPreprocessor(r)
+	}
+
 	reader := bufio.NewReader(r)
 	for {
 		line, err := reader.ReadSlice(byte(t.newLine))
