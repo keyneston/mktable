@@ -3,6 +3,14 @@
 `mktable` is a simplish cli tool which consumes content via STDIN and converts
 it into a pretty aligned table ready for use in markdown.
 
+# Installation
+
+With go installed:
+
+```
+go install github.com/keyneston/mktable@latest
+```
+
 # Use
 
 ```
