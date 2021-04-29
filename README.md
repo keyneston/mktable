@@ -34,7 +34,7 @@ $ netstat -i | head -5 | mktable -s ' +'
 | ------------------ | ---------------- | -------------------------------------------------------------- |
 | `-s`               | `[ \t]*\t[ \t]*` | Regexp used to set the delimiter                               |
 | `-no-headers`      | `false`          | Skip printing headers                                          |
-| `-r` / `-reformat` | `false`          | Reformat existing markdown table. Alias for -format mk         |
+| `-r` / `-reformat` | `false`          | Reformat existing markdown table. Alias for `-format mk`       |
 | `-a`               | none             | Sets the alignment. See [Alignment](#alignment)                |
 | `-f`               | `regexp`         | Sets the input format. See [Formats](#format) for more details |
 
