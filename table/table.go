@@ -1,9 +1,6 @@
 package table
 
 import (
-	"bufio"
-	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -34,76 +31,6 @@ func NewTable(config TableConfig) *Table {
 	}
 }
 
-func (t *Table) readFormatMK(r io.Reader) error {
-	scanner := bufio.NewScanner(r)
-	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		start := 0
-		for i := range data {
-			switch data[i] {
-			case '\n':
-				token := bytes.TrimSpace(data[start:i])
-				if len(token) > 0 {
-					return i, token, nil
-				}
-
-				return i + 1, []byte{'\n'}, nil
-			case '|':
-				if i > 0 && data[i-1] == '\\' {
-					continue
-				}
-				if i == 0 {
-					start = i + 1
-					continue
-				}
-
-				token := bytes.TrimSpace(data[start:i])
-				return i + 1, token, nil
-			}
-		}
-
-		return 0, nil, nil
-	})
-
-	current := []string{}
-	alignments := map[int]Alignment{}
-	isHeader := false
-	column := 0
-
-	for scanner.Scan() {
-		token := scanner.Text()
-
-		if token == "\n" {
-			if isHeader {
-				t.Alignments = alignments
-			} else {
-				t.data = append(t.data, current)
-			}
-
-			alignments = map[int]Alignment{}
-			column = 0
-			current = nil
-			isHeader = false
-			continue
-		}
-
-		// Check if it is likely part of a header row, by removing all header
-		// row chars and seeing if we have nothing left
-		if len(strings.Trim(token, ":-")) == 0 {
-			isHeader = true
-			alignments[column] = parseAlignmentHeader(token)
-		}
-
-		current = append(current, token)
-
-		column++
-	}
-	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
-		return err
-	}
-
-	return nil
-}
-
 func (t *Table) Read(r io.Reader) error {
 	switch t.Format {
 	case FormatMK:
@@ -112,34 +39,6 @@ func (t *Table) Read(r io.Reader) error {
 		return t.readFormatRE(r)
 	default:
 		return fmt.Errorf("Unable to read format: %q", string(t.Format))
-	}
-}
-
-func (t *Table) readFormatRE(r io.Reader) error {
-	reader := bufio.NewReader(r)
-	for {
-		line, err := reader.ReadSlice(byte(t.NewLine))
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
-		if line == nil {
-			return nil
-		}
-
-		line = bytes.TrimSpace(line)
-		if len(line) < 1 {
-			continue
-		}
-
-		res := t.Seperator.Split(string(line), -1)
-		for i := range res {
-			res[i] = prepareContent(res[i])
-		}
-		t.data = append(t.data, res)
-
 	}
 }
 
