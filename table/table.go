@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -57,7 +58,7 @@ func (t *Table) readReformat(r io.Reader) error {
 					return i, token, nil
 				}
 
-				return 1, []byte{'\n'}, nil
+				return i + 1, []byte{'\n'}, nil
 			case '|':
 				if i > 0 && data[i-1] == '\\' {
 					continue
@@ -85,6 +86,7 @@ func (t *Table) readReformat(r io.Reader) error {
 		token := scanner.Text()
 
 		if token == "\n" {
+			log.Printf("Found \\n, isHeader: %v; alignments: %v, data: %v", isHeader, alignments, current)
 			if isHeader {
 				t.Alignments = alignments
 			} else {

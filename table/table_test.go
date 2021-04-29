@@ -52,6 +52,10 @@ func TestReadReformat(t *testing.T) {
 			expected: [][]string{{"a", "b", "c"}, {"1", "2", "3"}},
 		},
 		{
+			name: "trailing space", input: "| a | \n| --- |\n|1 |\n",
+			expected: [][]string{{"a"}, {"1"}},
+		},
+		{
 			name: "header", input: "| --- | --- | --- |\n",
 			expected: nil,
 		},
