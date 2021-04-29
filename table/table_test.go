@@ -3,80 +3,10 @@ package table
 import (
 	"bytes"
 	"fmt"
-	"regexp"
-	"strings"
 	"testing"
-
-	"github.com/go-test/deep"
 )
 
-func TestTable(t *testing.T) {
-	type testCase struct {
-		name     string
-		input    string
-		sep      string
-		expected [][]string
-	}
-
-	cases := []testCase{
-		{name: "basic", input: "a\nb\nc\n",
-			sep:      `\t+`,
-			expected: [][]string{{"a"}, {"b"}, {"c"}},
-		},
-	}
-
-	for _, c := range cases {
-		tb := NewTable(regexp.MustCompile(c.sep))
-		tb.Read(bytes.NewBufferString(c.input))
-
-		if diff := deep.Equal(c.expected, tb.data); diff != nil {
-			t.Errorf("Table.Read(%q) =\n%v", c.name, strings.Join(diff, "\n"))
-		}
-	}
-}
-
-func TestReadReformat(t *testing.T) {
-	type testCase struct {
-		name     string
-		input    string
-		expected [][]string
-	}
-
-	cases := []testCase{
-		{
-			name: "basic", input: "| a | b | c |\n",
-			expected: [][]string{{"a", "b", "c"}},
-		},
-		{
-			name: "multiline", input: "| a | b | c |\n| --- | ---| ---|\n|1 | 2|3|\n",
-			expected: [][]string{{"a", "b", "c"}, {"1", "2", "3"}},
-		},
-		{
-			name: "trailing space", input: "| a | \n| --- |\n|1 |\n",
-			expected: [][]string{{"a"}, {"1"}},
-		},
-		{
-			name: "header", input: "| --- | --- | --- |\n",
-			expected: nil,
-		},
-		{
-			name: "trailing pipe", input: "| a | b | \\| |\n",
-			expected: [][]string{{"a", "b", `\|`}},
-		},
-	}
-
-	for _, c := range cases {
-		tb := NewTable(regexp.MustCompile(`\t`))
-		tb.Reformat = true
-		tb.Read(bytes.NewBufferString(c.input))
-
-		if diff := deep.Equal(c.expected, tb.data); diff != nil {
-			t.Errorf("Table.Read(%q) =\n%v", c.name, strings.Join(diff, "\n"))
-		}
-	}
-}
-
-func TestLongestRow(t *testing.T) {
+func TestFindColumnCount(t *testing.T) {
 	type testCase struct {
 		name     string
 		input    string
@@ -91,11 +21,15 @@ func TestLongestRow(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		tb := NewTable(regexp.MustCompile(c.sep))
-		tb.Read(bytes.NewBufferString(c.input))
+		tb := NewTable(NewConfig().SetSeperator(c.sep))
+		if err := tb.Read(bytes.NewBufferString(c.input)); err != nil {
+			t.Errorf("Error doing read: %v", err)
+			continue
+		}
 
-		if c.expected != tb.longestLine() {
-			t.Errorf("tb[%q].longestLine() = %d; want %d", c.name, tb.longestLine(), c.expected)
+		tb.findColumnCount()
+		if c.expected != tb.columnCount {
+			t.Errorf("tb[%q].columnCount = %d; want %d", c.name, tb.columnCount, c.expected)
 		}
 	}
 }
@@ -105,24 +39,25 @@ func TestPrint(t *testing.T) {
 		name     string
 		input    string
 		sep      string
-		expected int
+		expected string
 	}
 
 	cases := []testCase{
-		{name: "basic", input: "a\nb\nc\n", sep: `\t+`, expected: 1},
-		{name: "differing", input: "a\te\nb\nc\n", sep: `\t+`, expected: 2},
-		{name: "snake", input: "a\te\nb\tab\tabc\nc\n", sep: `\t+`, expected: 3},
+		{name: "basic", input: "a\nb\nc\n", sep: `\t+`, expected: ""},
+		{name: "differing", input: "a\te\nb\nc\n", sep: `\t+`, expected: ""},
+		{name: "snake", input: "a\te\nb\tab\tabc\nc\n", sep: `\t+`, expected: ""},
 	}
 
 	for _, c := range cases {
 		buf := &bytes.Buffer{}
-		tb := NewTable(regexp.MustCompile(c.sep))
-		tb.Read(bytes.NewBufferString(c.input))
+		tb := NewTable(NewConfig().SetSeperator(c.sep))
+		if err := tb.Read(bytes.NewBufferString(c.input)); err != nil {
+			t.Errorf("Error doing read: %v", err)
+			continue
+		}
 		tb.Write(buf)
 		fmt.Fprintln(buf, "")
 
-		if c.expected != tb.longestLine() {
-			t.Errorf("tb[%q].longestLine() = %d; want %d", c.name, tb.longestLine(), c.expected)
-		}
+		// TODO add expected and actually test it
 	}
 }

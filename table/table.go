@@ -1,12 +1,8 @@
 package table
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
-	"log"
-	"regexp"
 	"strings"
 )
 
@@ -17,148 +13,48 @@ const (
 	minHeaderWidth         = 3
 )
 
-var (
-	headerLine  = regexp.MustCompile(`^[| -]+\n$`)
-	reformatSep = regexp.MustCompile(`(?:[^\\])([\t ]*\|[\t ]*)`)
-)
-
 type Table struct {
-	data    [][]string
-	sep     *regexp.Regexp
-	newLine NewLine
+	TableConfig
 
-	MaxPadding  int
-	SkipHeaders bool
-	Reformat    bool
-
-	Alignments map[int]Alignment
-
-	rowCount    int
+	data        [][]string
+	columnCount int
 	columnChars []int
 }
 
-func NewTable(sep *regexp.Regexp) *Table {
+func NewTable(config TableConfig) *Table {
+	if config.NewLine == 0x0 {
+		config.NewLine = NewLineUnix
+	}
+
 	return &Table{
-		sep:        sep,
-		newLine:    NewLineUnix,
-		MaxPadding: -1,
-		Alignments: map[int]Alignment{},
+		TableConfig: config,
 	}
-}
-
-func (t *Table) readReformat(r io.Reader) error {
-	scanner := bufio.NewScanner(r)
-	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		start := 0
-		for i := range data {
-			switch data[i] {
-			case '\n':
-				token := bytes.TrimSpace(data[start:i])
-				if len(token) > 0 {
-					return i, token, nil
-				}
-
-				return i + 1, []byte{'\n'}, nil
-			case '|':
-				if i > 0 && data[i-1] == '\\' {
-					continue
-				}
-				if i == 0 {
-					start = i + 1
-					continue
-				}
-
-				token := bytes.TrimSpace(data[start:i])
-				return i + 1, token, nil
-			}
-		}
-
-		return 0, nil, nil
-	})
-
-	// The actual logic is in the split function, we aren't using the tokens returned here.
-	current := []string{}
-	alignments := map[int]Alignment{}
-	isHeader := false
-	column := 0
-
-	for scanner.Scan() {
-		token := scanner.Text()
-
-		if token == "\n" {
-			log.Printf("Found \\n, isHeader: %v; alignments: %v, data: %v", isHeader, alignments, current)
-			if isHeader {
-				t.Alignments = alignments
-			} else {
-				t.data = append(t.data, current)
-			}
-
-			alignments = map[int]Alignment{}
-			column = 0
-			current = nil
-			isHeader = false
-			continue
-		}
-
-		// Check if it is likely part of a header row, by removing all header
-		// row chars and seeing if we have nothing left
-		if len(strings.Trim(token, ":-")) == 0 {
-			isHeader = true
-			alignments[column] = parseAlignmentHeader(token)
-		}
-
-		current = append(current, token)
-
-		column++
-	}
-
-	return nil
 }
 
 func (t *Table) Read(r io.Reader) error {
-	if t.Reformat {
-		return t.readReformat(r)
-	}
-
-	reader := bufio.NewReader(r)
-	for {
-		line, err := reader.ReadSlice(byte(t.newLine))
-		if err != nil {
-			return err
-		}
-		if line == nil {
-			return nil
-		}
-
-		line = bytes.TrimSpace(line)
-		if len(line) < 1 {
-			continue
-		}
-
-		res := t.sep.Split(string(line), -1)
-		for i := range res {
-			res[i] = prepareContent(res[i])
-		}
-
-		// Handle line here
-		t.data = append(t.data, res)
+	switch t.Format {
+	case FormatMK:
+		return t.readFormatMK(r)
+	case FormatRE:
+		return t.readFormatRE(r)
+	case FormatCSV:
+		return t.readFormatCSV(r)
+	default:
+		return fmt.Errorf("Unable to read format: %q", string(t.Format))
 	}
 }
 
-// longestLine finds the line with the most number of columns, and figures out
+// findColumnCount finds the line with the most number of columns, and figures out
 // how wide each column needs to be.
-func (t *Table) longestLine() int {
-	longest := 0
-
+func (t *Table) findColumnCount() {
 	for _, row := range t.data {
-		if len(row) > longest {
-			longest = len(row)
+		if len(row) > t.columnCount {
+			t.columnCount = len(row)
 		}
+
 	}
 
-	t.rowCount = longest
-	t.columnChars = make([]int, t.rowCount)
-
+	t.columnChars = make([]int, t.columnCount)
 	for _, row := range t.data {
 		for i := range row {
 			l := len(row[i])
@@ -167,12 +63,11 @@ func (t *Table) longestLine() int {
 			}
 		}
 	}
-
-	return longest
 }
 
 func (t *Table) Write(w io.Writer) (int, error) {
-	t.longestLine()
+	t.findColumnCount()
+
 	sw := newSumWriter(w)
 	w = sw // alias to prevent any accidental mis-writes
 	startingRow := 0
@@ -199,7 +94,7 @@ func (t *Table) Write(w io.Writer) (int, error) {
 
 func (t *Table) writeRow(w io.Writer, row []string) error {
 	fmt.Fprintf(w, "|")
-	for i := 0; i < t.rowCount; i++ {
+	for i := 0; i < t.columnCount; i++ {
 		column := ""
 		if i < len(row) {
 			column = row[i]
@@ -212,7 +107,7 @@ func (t *Table) writeRow(w io.Writer, row []string) error {
 		}
 	}
 
-	_, err := fmt.Fprintf(w, string(t.newLine))
+	_, err := fmt.Fprintf(w, string(t.NewLine))
 	return err
 }
 
@@ -239,7 +134,7 @@ func (t *Table) getColumnWidth(i int) int {
 
 func (t *Table) genHeaderBreaks() []string {
 	breaks := []string{}
-	for i := 0; i < t.rowCount; i++ {
+	for i := 0; i < t.columnCount; i++ {
 		alignment := t.Alignments[i] // Get the alignment, if not set it will return AlignDefault
 		breaks = append(breaks, alignment.header(t.getColumnWidth(i)))
 	}
