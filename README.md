@@ -28,6 +28,41 @@ $ netstat -i | head -5 | mktable -s ' +'
 | lo0  | 16384 | keyport.loc | fe80:1::1 | 9583572 | -       | 9583572 | -     | -    |
 ```
 
+## Flags
+
+| Flag               | Default          | Description                                     |
+| ------------------ | ---------------- | ----------------------------------------------- |
+| `-s`               | `[ \t]*\t[ \t]*` | Regexp used to set the delimiter                |
+| `-no-headers`      | `false`          | Skip printing headers                           |
+| `-r` / `-reformat` | `false`          | Reformat existing markdown table                |
+| `-a`               | none             | Sets the alignment. See [Alignment](#alignment) |
+
+## Alignment
+
+**EXPERIMENTAL**
+
+The alignment flag can be passed multiple times and/or passed as a comma
+seperated list.
+
+It takes a number indicating a zero indexed column, and a character
+indicating how to align the column.
+
+| char | alignment |
+| ---- | --------- |
+| `>`  | right     |
+| `<`  | left      |
+| `=`  | center    |
+
+### Examples
+
+| Example              | Description                                             |
+| -------------------- | ------------------------------------------------------- |
+| `-a '0<'`            | left align the 1st column                               |
+| `-a '1='`            | center align the 2nd column                             |
+| `-a '1=,2>'`         | center align the 2nd column, and right align the second |
+| `-a '1=,2>' -a '3='` | as above, but also center align the 4th column          |
+
+
 ## Reformat existing tables
 
 ```

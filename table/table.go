@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"regexp"
 	"strings"
 )
@@ -30,6 +31,8 @@ type Table struct {
 	SkipHeaders bool
 	Reformat    bool
 
+	Alignments map[int]Alignment
+
 	rowCount    int
 	columnChars []int
 }
@@ -39,63 +42,74 @@ func NewTable(sep *regexp.Regexp) *Table {
 		sep:        sep,
 		newLine:    NewLineUnix,
 		MaxPadding: -1,
+		Alignments: map[int]Alignment{},
 	}
 }
 
 func (t *Table) readReformat(r io.Reader) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		start := 0
 		for i := range data {
 			switch data[i] {
 			case '\n':
-				token := bytes.TrimSpace(data[0:i])
+				token := bytes.TrimSpace(data[start:i])
 				if len(token) > 0 {
-					return i - 1, token, nil
+					return i, token, nil
 				}
 
-				return 1, []byte{'\n'}, nil
+				return i + 1, []byte{'\n'}, nil
 			case '|':
 				if i > 0 && data[i-1] == '\\' {
 					continue
 				}
 				if i == 0 {
-					return 1, nil, nil
+					start = i + 1
+					continue
 				}
 
-				token := bytes.TrimSpace(data[0 : i-1])
+				token := bytes.TrimSpace(data[start:i])
 				return i + 1, token, nil
 			}
 		}
 
-		if atEOF {
-			return 0, nil, nil
-		}
-		// Ask for more data:
 		return 0, nil, nil
 	})
 
 	// The actual logic is in the split function, we aren't using the tokens returned here.
 	current := []string{}
+	alignments := map[int]Alignment{}
 	isHeader := false
+	column := 0
 
 	for scanner.Scan() {
 		token := scanner.Text()
 
 		if token == "\n" {
-			if !isHeader {
+			log.Printf("Found \\n, isHeader: %v; alignments: %v, data: %v", isHeader, alignments, current)
+			if isHeader {
+				t.Alignments = alignments
+			} else {
 				t.data = append(t.data, current)
 			}
+
+			alignments = map[int]Alignment{}
+			column = 0
 			current = nil
+			isHeader = false
 			continue
 		}
 
-		// TODO: Preserve alignment (`:--`, `--:`, `:--:`) through reformats
-
 		// Check if it is likely part of a header row, by removing all header
 		// row chars and seeing if we have nothing left
-		isHeader = (len(strings.Trim(token, ":-")) == 0)
+		if len(strings.Trim(token, ":-")) == 0 {
+			isHeader = true
+			alignments[column] = parseAlignmentHeader(token)
+		}
 
 		current = append(current, token)
+
+		column++
 	}
 
 	return nil
@@ -226,7 +240,8 @@ func (t *Table) getColumnWidth(i int) int {
 func (t *Table) genHeaderBreaks() []string {
 	breaks := []string{}
 	for i := 0; i < t.rowCount; i++ {
-		breaks = append(breaks, strings.Repeat("-", t.getColumnWidth(i)))
+		alignment := t.Alignments[i] // Get the alignment, if not set it will return AlignDefault
+		breaks = append(breaks, alignment.header(t.getColumnWidth(i)))
 	}
 
 	return breaks
