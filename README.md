@@ -36,7 +36,7 @@ $ netstat -i | head -5 | mktable -s ' +'
 | `-no-headers`      | `false`          | Skip printing headers                                          |
 | `-r` / `-reformat` | `false`          | Reformat existing markdown table. Alias for `-format mk`       |
 | `-a`               | none             | Sets the alignment. See [Alignment](#alignment)                |
-| `-f`               | `regexp`         | Sets the input format. See [Formats](#format) for more details |
+| `-f` / `-format`   | `regexp`         | Sets the input format. See [Formats](#format) for more details |
 
 ## Formats
 

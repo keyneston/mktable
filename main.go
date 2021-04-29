@@ -33,6 +33,7 @@ func (c *Config) Register(f *flag.FlagSet) *Config {
 	c.fset.BoolVar(&c.Reformat, "r", false, "Read in markdown table and reformat")
 	c.fset.BoolVar(&c.Reformat, "reformat", false, "Alias for -r")
 	c.fset.Var(&c.Format, "f", fmt.Sprintf("Set the format. Available formats: %v", allFormats))
+	c.fset.Var(&c.Format, "format", "Alias for -f")
 	c.fset.Var(&c.Alignments, "a", "Set column alignments; Can be called multiple times and/or comma separated. Arrow indicates direction '<' left, '>' right, '=' center; Columns are zero indexed; e.g. -a '0<,1>,2='")
 
 	return c
