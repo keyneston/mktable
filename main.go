@@ -5,18 +5,27 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/keyneston/mktable/table"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+	builtBy = "unknown"
+)
+
 type Config struct {
-	SkipHeaders bool
-	Seperator   string
+	Format      FormatValue
 	MaxPadding  int
 	Reformat    bool
-	Format      FormatValue
+	Seperator   string
+	SkipHeaders bool
+	Version     bool
 
 	Alignments ParseAlignments
 
@@ -35,6 +44,7 @@ func (c *Config) Register(f *flag.FlagSet) *Config {
 	c.fset.Var(&c.Format, "f", fmt.Sprintf("Set the format. Available formats: %v", allFormats))
 	c.fset.Var(&c.Format, "format", "Alias for -f")
 	c.fset.Var(&c.Alignments, "a", "Set column alignments; Can be called multiple times and/or comma separated. Arrow indicates direction '<' left, '>' right, '=' center; Columns are zero indexed; e.g. -a '0<,1>,2='")
+	c.fset.BoolVar(&c.Version, "v", false, "Print version info")
 
 	return c
 }
@@ -54,6 +64,11 @@ func main() {
 		log.Fatalf("Error: %v", err)
 	}
 
+	if c.Version {
+		PrintVersion(os.Args[0])
+		os.Exit(0)
+	}
+
 	tableConfig := table.TableConfig{
 		MaxPadding:  c.MaxPadding,
 		SkipHeaders: c.SkipHeaders,
@@ -68,4 +83,8 @@ func main() {
 	tb := table.NewTable(tableConfig)
 	tb.Read(os.Stdin)
 	tb.Write(os.Stdout)
+}
+
+func PrintVersion(bin string) {
+	fmt.Printf("%s\nversion: %s\ncommit: %v\nbuilt-on: %v\nbuilt-by: %v\n", filepath.Base(bin), version, commit, date, builtBy)
 }

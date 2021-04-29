@@ -41,7 +41,6 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.GH_BREW_TOKEN }}"
 
-
     # Your app's homepage.
     # Default is empty.
     homepage: "https://github.com/keyneston/mktable"
