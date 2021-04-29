@@ -1,6 +1,9 @@
 package table
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Format string
 
@@ -21,7 +24,7 @@ func AllFormats() []string {
 }
 
 func ParseFormat(in string) (Format, error) {
-	switch in {
+	switch strings.ToLower(in) {
 	case "re", "regexp", "regex":
 		return FormatRE, nil
 	case "csv":
