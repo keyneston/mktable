@@ -37,6 +37,8 @@ func (t *Table) Read(r io.Reader) error {
 		return t.readFormatMK(r)
 	case FormatRE:
 		return t.readFormatRE(r)
+	case FormatCSV:
+		return t.readFormatCSV(r)
 	default:
 		return fmt.Errorf("Unable to read format: %q", string(t.Format))
 	}

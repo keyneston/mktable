@@ -21,3 +21,8 @@ func (t TableConfig) SetSeperator(in string) TableConfig {
 
 	return t
 }
+
+func (t TableConfig) SetFormat(format Format) TableConfig {
+	t.Format = format
+	return t
+}
