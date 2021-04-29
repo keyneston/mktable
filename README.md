@@ -1,5 +1,7 @@
 # mktable
 
+[![Go](https://github.com/keyneston/mktable/actions/workflows/go.yml/badge.svg)](https://github.com/keyneston/mktable/actions/workflows/go.yml)
+
 `mktable` is a simplish cli tool which consumes content via STDIN and converts
 it into a pretty aligned table ready for use in markdown.
 
