@@ -86,5 +86,20 @@ func main() {
 }
 
 func PrintVersion(bin string) {
-	fmt.Printf("%s\nversion: %s\ncommit: %v\nbuilt-on: %v\nbuilt-by: %v\n", filepath.Base(bin), version, commit, date, builtBy)
+	fmt.Printf(strings.TrimLeft(`
+%s
+version: %s
+commit: %v
+built-on: %v
+built-by: %v
+formats: %v
+`,
+		" \t\n"),
+		filepath.Base(bin),
+		version,
+		commit,
+		date,
+		builtBy,
+		strings.Join(table.AllFormats(), ", "),
+	)
 }
