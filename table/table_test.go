@@ -48,6 +48,10 @@ func TestReadReformat(t *testing.T) {
 			expected: [][]string{{"a", "b", "c"}},
 		},
 		{
+			name: "multiline", input: "| a | b | c |\n| --- | ---| ---|\n|1 | 2|3|\n",
+			expected: [][]string{{"a", "b", "c"}, {"1", "2", "3"}},
+		},
+		{
 			name: "header", input: "| --- | --- | --- |\n",
 			expected: nil,
 		},

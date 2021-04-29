@@ -2,6 +2,7 @@ package table
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -28,5 +29,24 @@ func (a Alignment) header(size int) string {
 		return fmt.Sprintf(":%s:", strings.Repeat("-", size-2))
 	default:
 		return strings.Repeat("-", size)
+	}
+}
+
+var (
+	reAlignLeft   = regexp.MustCompile("^:-{2,}$")
+	reAlignRight  = regexp.MustCompile("^-{2,}:$")
+	reAlignCenter = regexp.MustCompile("^:-+:$")
+)
+
+func parseAlignmentHeader(input string) Alignment {
+	switch {
+	case reAlignCenter.MatchString(input):
+		return AlignCenter
+	case reAlignLeft.MatchString(input):
+		return AlignLeft
+	case reAlignRight.MatchString(input):
+		return AlignRight
+	default:
+		return AlignDefault
 	}
 }
