@@ -7,9 +7,14 @@ it into a pretty aligned table ready for use in markdown.
 
 # Installation
 
+```shell
+brew tap keyneston/tap
+brew install mktable
+```
+
 With go installed:
 
-```
+```shell
 go install github.com/keyneston/mktable@latest
 ```
 
