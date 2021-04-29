@@ -30,6 +30,8 @@ type Table struct {
 	SkipHeaders bool
 	Reformat    bool
 
+	Alignments map[int]Alignment
+
 	rowCount    int
 	columnChars []int
 }
@@ -39,6 +41,7 @@ func NewTable(sep *regexp.Regexp) *Table {
 		sep:        sep,
 		newLine:    NewLineUnix,
 		MaxPadding: -1,
+		Alignments: map[int]Alignment{},
 	}
 }
 
@@ -226,7 +229,8 @@ func (t *Table) getColumnWidth(i int) int {
 func (t *Table) genHeaderBreaks() []string {
 	breaks := []string{}
 	for i := 0; i < t.rowCount; i++ {
-		breaks = append(breaks, strings.Repeat("-", t.getColumnWidth(i)))
+		alignment := t.Alignments[i] // Get the alignment, if not set it will return AlignDefault
+		breaks = append(breaks, alignment.header(t.getColumnWidth(i)))
 	}
 
 	return breaks
