@@ -11,6 +11,9 @@ With go installed:
 go install github.com/keyneston/mktable@latest
 ```
 
+Or download the [latest release](https://github.com/keyneston/mktable/releases/) and add to your path.
+
+
 # Use
 
 ```
