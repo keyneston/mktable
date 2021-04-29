@@ -30,3 +30,29 @@ release:
   #  - glob: ./path/to/file.txt
   #  - glob: ./glob/**/to/**/file/**/*
   #  - glob: ./glob/foo/to/bar/file/foobar/override_from_previous
+  #
+
+brews:
+  -
+    name: mktable
+    
+    tap:
+      owner: keyneston
+      name: homebrew-tap
+      token: "{{ .Env.GH_BREW_TOKEN }}"
+
+
+    # Your app's homepage.
+    # Default is empty.
+    homepage: "https://github.com/keyneston/mktable"
+
+    # Your app's description.
+    # Default is empty.
+    description: "Make markdown tables from the command line"
+
+    # SPDX identifier of your app's license.
+    # Default is empty.
+    license: "BSD-3-Clause"
+
+    test: |
+      system "#{bin}/mktable --h"
