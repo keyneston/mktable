@@ -9,13 +9,18 @@ import (
 
 func (t *Table) readFormatRE(r io.Reader) error {
 	reader := bufio.NewReader(r)
-	for {
+
+	done := false
+	for !done {
 		line, err := reader.ReadSlice(byte(t.NewLine))
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
+			if !errors.Is(err, io.EOF) {
+				return err
 			}
-			return err
+
+			// If we receive io.EOF then we need to finish processing the final
+			// line, then stop looping.
+			done = true
 		}
 		if line == nil {
 			return nil
@@ -31,6 +36,7 @@ func (t *Table) readFormatRE(r io.Reader) error {
 			res[i] = prepareContent(res[i])
 		}
 		t.data = append(t.data, res)
-
 	}
+
+	return nil
 }

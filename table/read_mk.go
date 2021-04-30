@@ -35,6 +35,11 @@ func (t *Table) readFormatMK(r io.Reader) error {
 			}
 		}
 
+		trimmedData := bytes.TrimSpace(data)
+		if atEOF && len(trimmedData) > 0 {
+			return len(data) + 1, trimmedData, nil
+		}
+
 		return 0, nil, nil
 	})
 
@@ -73,6 +78,10 @@ func (t *Table) readFormatMK(r io.Reader) error {
 	}
 	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
 		return err
+	}
+
+	if len(current) > 0 {
+		t.data = append(t.data, current)
 	}
 
 	return nil

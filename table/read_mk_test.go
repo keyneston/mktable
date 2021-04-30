@@ -36,6 +36,10 @@ func TestReadFormatMK(t *testing.T) {
 			name: "trailing pipe", input: "| a | b | \\| |\n",
 			expected: [][]string{{"a", "b", `\|`}},
 		},
+		{
+			name: "missing final newline", input: "| a | b | a |\n|1 | 2 |3|",
+			expected: [][]string{{"a", "b", "a"}, {"1", "2", "3"}},
+		},
 	}
 
 	for _, c := range cases {

@@ -25,6 +25,11 @@ func TestReadFormatRE(t *testing.T) {
 			sep:      `\t+`,
 			expected: [][]string{{"a", "1"}, {"b", "2"}, {"c", "3"}},
 		},
+		{
+			name: "missing final newline", input: "a\tb\ta\t\n1\t2\t3",
+			sep:      `\t+`,
+			expected: [][]string{{"a", "b", "a"}, {"1", "2", "3"}},
+		},
 	}
 
 	for _, c := range cases {
