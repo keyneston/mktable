@@ -29,6 +29,14 @@ func TestReadFormatMK(t *testing.T) {
 			expected: [][]string{{"a"}, {"1"}},
 		},
 		{
+			name: "empty column", input: "| a | b |\n| --- | --- |\n|1 | |\n",
+			expected: [][]string{{"a", "b"}, {"1", " "}},
+		},
+		{
+			name: "empty middle column", input: "| a | b | c |\n| --- | --- | --- |\n|1 | | 3 |\n",
+			expected: [][]string{{"a", "b", "c"}, {"1", " ", "3"}},
+		},
+		{
 			name: "header", input: "| --- | --- | --- |\n",
 			expected: nil,
 		},
