@@ -5,14 +5,12 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log"
 	"strings"
 )
 
 func (t *Table) readFormatMK(r io.Reader) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		log.Printf("Checking: %#v", string(data))
 
 		start := 0
 		for i := range data {
@@ -23,7 +21,6 @@ func (t *Table) readFormatMK(r io.Reader) error {
 					return i, token, nil
 				}
 
-				log.Printf("Returning newline")
 				return i + 1, []byte{'\n'}, nil
 			case '|':
 				// Ignore escaped pipe chars `|`
@@ -40,7 +37,6 @@ func (t *Table) readFormatMK(r io.Reader) error {
 					token = []byte(" ")
 				}
 
-				log.Printf("Returning |: %#v", string(token))
 				return i + 1, token, nil
 			}
 		}
